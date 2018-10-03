@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<!--
+********************************************************************
+* Copyright (c) 2018, Douglas Campbell
+* Licensed under the MIT License
+********************************************************************
+-->
+<html lang="en" class="viewer">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Image match game</title>
+  <link rel="shortcut icon" href="/image-match-game/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Assistant">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+  <style>
+  /* after specific fonts, revert to Bootstrap defaults */
+  body {
+    background-color: #DCD0C0;
+    font-family: 'Assistant', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 1.2em;
+  }
+  h2, h3, h4, h5, h6 {
+    color: DarkOliveGreen;
+    font-weight: bold;
+  }
+  /* add back link underlining where Bootstrap removes it */
+  a:link,
+  a:visited {
+    color: #444422;
+    text-decoration: underline;
+  }
+  a:hover,
+  a:active {
+    color: DarkSlateGrey;
+  }
+  .caption {
+    font-size: 0.9em;
+    background-color: #F4F4F4;
+    padding: 0.5em;
+  }
+  .header {
+    background-color: #C0B283;
+    padding-top: 1.0em;
+    padding-bottom: 0.6em;
+  }
+  .footer {
+    background-color: #C0B283;
+    padding-top: 1.0em;
+    padding-bottom: 0.4em;
+    font-size: 0.9em;
+  }
+  </style>
+  <script>
+  console.log("gtag('config', 'UA-XXX');")
+  </script>
+</head>
+
+<body>
+  <div class="header container-fluid">
+    <div class="col-sm-10 col-md-8 col-xl-6 mx-auto">
+      <div class="row">
+        <div class="col-sm-10">
+          <h3 class="main-heading"><a href="/image-match-game/" style="text-decoration: none;">Image match game</a></h3>
+        </div>
+        <div class="col-sm-2 text-right">
+          <a href="about.html" style="text-decoration: none;">About</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- my-4 = bootstrap code for: margin top/bottom = 4rem -->
+  <div class="container-fluid my-4">
+    <div class="row">
+      <div class="col-sm-10 col-md-8 col-xl-6 mx-auto">
+
+        <div class="row">
+          <div id="counter" class="col-sm-9"></div>
+          <div id="high-score" class="col-sm-3 text-right">High score: 0</div>
+        </div>
+
+        <div id="target-image" class="row">
+          <p>Loading image...</p>
+        </div>
+
+        <div class="row">
+          <h4 style="margin-top: 20px; margin-bottom: 20px;">Choose the caption that matches this image</h4>
+        </div>
+
+        <div id="options" class="row">
+          <p>Loading options...</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="footer container-fluid">
+    <div class="col-sm-12 col-md-8 col-xl-6 mx-auto">
+      <p>Over 100,000 downloadable images in <a href="https://collections.tepapa.govt.nz/">Te Papa's Collections Online</a>.</p>
+    </div>
+  </div>
+
+  <!-- popup update modal -->
+  <div id="playAlert" title="Play update" class="modal">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="playAlertTitle" class="modal-title"></h5>
+        </div>
+        <div id="playAlertMessage" class="modal-body"></div>
+        <div class="modal-footer">
+          <div id="playAlertFooter"></div>
+          <button id="play-alert-close-button" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="gameAlert" title="Game update" class="modal">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="gameAlertTitle" class="modal-title"></h5>
+        </div>
+        <div id="gameAlertMessage" class="modal-body"></div>
+        <div class="modal-footer">
+          <button id="game-alert-close-button" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+
+  // globals
+  var API_BASE = 'https://data.tepapa.govt.nz/collection'
+  var API_KEY = 'P7ufPoVJ1n9qcmrbvfYdx3Z2opdexYIm3eVBSboa'
+  var VIEW_BASE = 'https://collections.tepapa.govt.nz/object/'
+  // maximum results expected from canned query (for random generator base)
+  var MAX_POSSIBLE = 13000
+  // how many answer options we want to show for each card
+  var MAX_OPTIONS = 3
+  // how many card plays in each game
+  var MAX_CARDS = 10
+  var card_counter = 0
+  var game_counter = 0
+  var game_score = 0
+  var high_score = 0
+  var target = void 0
+  var options = []
+
+  /**
+  * Once the page is ready, start the first game
+  */
+  document.addEventListener('DOMContentLoaded', function() {
+
+    // set up modal close on card play alert to move to next card/game over
+    $('#playAlert').on('hidden.bs.modal', function (e) {
+      if (card_counter < MAX_CARDS) {
+        nextCard()
+      } else {
+        gameOver()
+      }
+    })
+    // set up modal close on game-over alert to move to next game
+    $('#gameAlert').on('hidden.bs.modal', function (e) {
+      startNewGame()
+    })
+
+    // start the game
+    startNewGame()
+  })
+
+  function startNewGame() {
+    // reset counters and play new card
+    game_counter++
+    card_counter = 0
+    game_score = 0
+    nextCard()
+  }
+
+  function gameOver() {
+    console.log("GAME OVER")
+
+    // start building message - player's score
+    let html = 'End of game ' + game_counter
+    html += ' -- Your score: ' + game_score
+
+    // update high score
+    if (game_score > high_score) {
+      html += '<br />New high score!! (Up from ' + high_score + ')'
+      high_score = game_score
+      $('#high-score').html('High score: ' + high_score)
+    }
+
+    // display game-over message
+    $('#gameAlertTitle').html('<p style="color: #3366cc;">Game over</p>')
+    $('#gameAlertMessage').html(html)
+    $('#gameAlert').modal()
+  }
+
+  function nextCard() {
+    // display current card number
+    card_counter++
+    $('#counter').html('<p>Game ' + game_counter + ' - Card ' + card_counter + ' of ' + MAX_CARDS + '</p>')
+
+    // reset and load/display next random card and options
+    target = void 0
+    options = []
+    let randomNo = Math.floor(Math.random() * MAX_POSSIBLE)
+    //    retrieve(randomNo, 1, addToOptions)
+    retrieve(randomNo, 5, processResults)
+  }
+
+  /**
+  * Queries for multiple resources from the Te Papa Collections API.
+  *
+  * @param {Integer} - position in search results to start from
+  * @param {Integer} - size of search results to request
+  * @param {Function} - Callback function to pass the JSON response to
+  */
+  function retrieve(from, size, callback) {
+    let url = API_BASE + '/search/?q=_exists_:hasRepresentation+AND+collection:Art&fields=id,title,caption,hasRepresentation&from=' + from + '&size=' + size
+    console.log("API: " + url)
+    try {
+      $.ajax({
+        url: url,
+        type: "GET",
+        headers: {
+          "x-api-key": API_KEY
+        },
+        contentType: 'application/json; charset=utf-8',
+        dataType: "json",
+        success: function(response, textStatus, jqXHR) {
+          callback(response)
+        },
+        error: function(error, textStatus, errorThrown) {
+          console.log("Retrieve failed: ", error)
+        }
+      })
+    } catch (e) {
+      console.log("Retrieve failed: ", e)
+    }
+  }
+
+  function processResults(responseJson) {
+    console.log("Response (processResults): ", responseJson)
+    if (responseJson.results) {
+
+      // choose the target randomly from the first four results
+      let randomNo = Math.floor(Math.random() * 4)
+      target = responseJson.results[randomNo]
+      displayImage(target)
+
+      // the first four results are the options
+      options.push(responseJson.results[0])
+      options.push(responseJson.results[1])
+      options.push(responseJson.results[2])
+      options.push(responseJson.results[3])
+      displayOptions(options)
+    }
+  }
+
+  /*
+    function addToOptions(responseJson) {
+      console.log("Response (addToOptions): ", responseJson)
+      if (responseJson.results) {
+        responseJson.results.forEach(function(rec) {
+          if (target == null) {
+            target = rec
+            displayImage(target)
+          }
+          options.push(rec)
+        })
+        // display when we've retrieved enough
+        if (options.length >= MAX_OPTIONS) {
+          displayOptions(options)
+        } else {
+          // otherwise retrieve another
+          let randomNo = Math.floor(Math.random() * MAX_POSSIBLE)
+          retrieve(randomNo, addToOptions)
+        }
+      }
+    }
+  */
+
+  /**
+  *
+  *
+  * @param {Array}
+  */
+  function displayOptions(options) {
+    //console.log("Options: ", options)
+    if (options) {
+      // clear existing options
+      $('#options').html('')
+      options.forEach(function(rec) {
+        let html = '<p id="' + rec.id + '" class="caption">' + rec.caption + '</p>'
+        $('#options').append(html)
+        // bind right/wrong play handler to each card
+        if (rec.id === target.id) {
+          $('#' + rec.id).on('click', function() {
+            handlePlay(true, rec.id, rec.title)
+          })
+        } else {
+          $('#' + rec.id).on('click', function() {
+            handlePlay(false, rec.id, rec.title)
+          })
+        }
+      })
+    }
+  }
+
+  /**
+  *
+  *
+  * @param {Object} - API single resource JSON
+  */
+  function displayImage(rec) {
+    //console.log("Rec (image): ", rec)
+    if (rec) {
+      // clear existing image
+      $('#target-image').html('')
+      if (rec.hasRepresentation) {
+        let html = '<img id="target-' + rec.id + '" src="' + rec.hasRepresentation[0].thumbnailUrl + '" alt="Target image" />'
+        $('#target-image').append(html)
+      }
+    }
+  }
+
+  function handlePlay(isCorrect, id, title) {
+    if (isCorrect) {
+      game_score++
+      $('#playAlertTitle').html('<p style="color:green;">Right</p>')
+    } else {
+      $('#playAlertTitle').html('<p style="color:red;">Wrong</p>')
+    }
+    let html = target.title + '<br /><a href="' + VIEW_BASE + target.id + '" target="_blank" style="font-size:0.8em;">View this image on Collections Online</a>'
+    $('#playAlertMessage').html(html)
+    $('#playAlertFooter').html("Status: " + game_score + " of " + card_counter)
+    $('#playAlert').modal()
+  }
+
+  // extract querystring parameter from page URL
+  function _getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    let regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+    results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+  }
+
+  </script>
+
+</body>
+</html>
