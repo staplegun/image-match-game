@@ -59,6 +59,7 @@
 </head>
 
 <body>
+  <!-- header -->
   <div class="header container-fluid">
     <div class="col-12 col-md-8 col-xl-6 mx-auto">
       <div class="row">
@@ -98,13 +99,14 @@
     </div>
   </div>
 
+  <!-- footer -->
   <div class="footer container-fluid">
     <div class="col-12 col-md-8 col-xl-6 mx-auto">
       <p>Over 100,000 downloadable images in <a href="https://collections.tepapa.govt.nz/">Te Papa's Collections Online</a>.</p>
     </div>
   </div>
 
-  <!-- popup update modal -->
+  <!-- popup gameplay modal (right/wrong) -->
   <div id="playAlert" title="Play update" class="modal">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
@@ -120,6 +122,7 @@
     </div>
   </div>
 
+  <!-- popup game-over modal (score/next game) -->
   <div id="gameAlert" title="Game update" class="modal fade">
     <div class="modal-dialog modal-dialog-centered" role="document">
       <div class="modal-content">
@@ -262,6 +265,8 @@
       options.push(responseJson.results[2])
       options.push(responseJson.results[3])
       displayOptions(options)
+
+      $('html, body').animate({scrollTop: 0}, 1);
     }
   }
 
